@@ -26,7 +26,7 @@ public class FrontendController {
 
     public FrontendController(RestTemplateBuilder rest, Environment env) {
         this.rest = rest;
-        this.modelHost = env.getProperty("MODEL_HOST");
+        this.modelHost = env.getProperty("MODEL_HOST", "http://localhost:8081");
         assertModelHost();
     }
 
