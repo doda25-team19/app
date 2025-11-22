@@ -3,7 +3,7 @@ name: Release container image
 on:
   push:
     tags:
-      - "v*"   # e.g. v1.2.3
+      - "v*" 
 
 permissions:
   contents: read
@@ -11,7 +11,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }} # org/repo
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -46,5 +46,3 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.VERSION }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          # if you ALSO want multi-arch later:
-          # platforms: linux/amd64,linux/arm64
