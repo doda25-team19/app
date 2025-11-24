@@ -1,29 +1,31 @@
-# Build stage for the Spring Boot frontend
+# --- Stage 1: Build ---
 FROM maven:3.9-eclipse-temurin-25 AS build
 
 WORKDIR /app
 
-# Copy frontend Maven project
+# Copy pom.xml and download dependencies first to leverage Docker layer caching
 COPY frontend/pom.xml frontend/pom.xml
-COPY frontend/src frontend/src
+RUN mvn -f frontend/pom.xml dependency:go-offline
 
-# Build the jar
+# Copy source code and build the application
+COPY frontend/src frontend/src
 RUN mvn -f frontend/pom.xml -q package -DskipTests
 
-# Runtime stage
+# --- Stage 2: Runtime ---
 FROM eclipse-temurin:25-jre
 
 WORKDIR /app
 
-# Copy built jar from build stage
+# Copy the compiled Jar from the build stage
 COPY --from=build /app/frontend/target/*.jar app.jar
 
-# Environment variables
-# APP_PORT controls the Spring Boot port, default 8080
+# Install necessary utilities and clean up the apt cache to reduce image size
+RUN apt-get update && apt-get install -y curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Configuration
 ENV APP_PORT=8080
 ENV SERVER_PORT=${APP_PORT}
-
-# MODEL_HOST tells the app where the Python backend runs
 ENV MODEL_HOST=http://model-service:8081
 
 EXPOSE 8080
