@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import frontend.data.Sms;
 import jakarta.servlet.http.HttpServletRequest;
 
+import org.doda25.team19.libversion.VersionUtil; 
+
 @Controller
 @RequestMapping(path = "/sms")
 public class FrontendController {
@@ -27,6 +29,9 @@ public class FrontendController {
     public FrontendController(RestTemplateBuilder rest, Environment env) {
         this.rest = rest;
         this.modelHost = env.getProperty("MODEL_HOST", "http://localhost:8081");
+        
+        System.out.println("Application starting with Lib-Version: " + new VersionUtil().getVersion());
+
         assertModelHost();
     }
 
