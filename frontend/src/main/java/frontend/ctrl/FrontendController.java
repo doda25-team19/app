@@ -14,9 +14,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import frontend.data.Sms;
+import frontend.metrics.MetricsRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 
-import org.doda25.team19.libversion.VersionUtil; 
+import org.doda25.team19.libversion.VersionUtil;
 
 @Controller
 @RequestMapping(path = "/sms")
@@ -26,10 +27,13 @@ public class FrontendController {
 
     private RestTemplateBuilder rest;
 
-    public FrontendController(RestTemplateBuilder rest, Environment env) {
+    private final MetricsRegistry metricsRegistry;
+
+    public FrontendController(RestTemplateBuilder rest, Environment env, MetricsRegistry metricsRegistry) {
         this.rest = rest;
         this.modelHost = env.getProperty("MODEL_HOST", "http://localhost:8081");
-        
+        this.metricsRegistry = metricsRegistry;
+
         System.out.println("Application starting with Lib-Version: " + new VersionUtil().getVersion());
 
         assertModelHost();
@@ -65,10 +69,46 @@ public class FrontendController {
     @PostMapping({ "", "/" })
     @ResponseBody
     public Sms predict(@RequestBody Sms sms) {
+        long startTime = System.nanoTime();
         System.out.printf("Requesting prediction for \"%s\" ...\n", sms.sms);
-        sms.result = getPrediction(sms);
-        System.out.printf("Prediction: %s\n", sms.result);
-        return sms;
+
+        try {
+            // Track input text length (user behavior metric)
+            try {
+                metricsRegistry.setInputTextLength(sms.sms.length());
+            } catch (Exception metricsError) {
+                System.err.println("Failed to record input length metric: " + metricsError.getMessage());
+            }
+
+            sms.result = getPrediction(sms);
+            System.out.printf("Prediction: %s\n", sms.result);
+
+            // Track success
+            try {
+                metricsRegistry.incrementPredictionCounter("success");
+            } catch (Exception metricsError) {
+                System.err.println("Failed to record success metric: " + metricsError.getMessage());
+            }
+
+            return sms;
+        } catch (Exception e) {
+            // Track error
+            try {
+                metricsRegistry.incrementPredictionCounter("error");
+            } catch (Exception metricsError) {
+                System.err.println("Failed to record error metric: " + metricsError.getMessage());
+            }
+            throw e;
+        } finally {
+            // Always track duration (both success and error)
+            try {
+                long endTime = System.nanoTime();
+                double durationSeconds = (endTime - startTime) / 1_000_000_000.0;
+                metricsRegistry.recordPredictionDuration(durationSeconds);
+            } catch (Exception metricsError) {
+                System.err.println("Failed to record duration metric: " + metricsError.getMessage());
+            }
+        }
     }
 
     private String getPrediction(Sms sms) {
