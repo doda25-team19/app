@@ -16,6 +16,13 @@ public class MetricsFormatter {
      * @param registry The metrics registry containing all metric data
      * @return Formatted string in Prometheus format
      */
+
+    private final String version;
+
+    public MetricsFormatter() {
+        this.version = System.getenv().getOrDefault("APP_VERSION", "unknown");
+    }
+
     public String formatMetrics(MetricsRegistry registry) {
         StringBuilder sb = new StringBuilder();
 
@@ -30,7 +37,7 @@ public class MetricsFormatter {
 
         return sb.toString();
     }
-
+    
     /**
      * Format the predictions_total counter metric.
      */
@@ -40,8 +47,8 @@ public class MetricsFormatter {
 
         Map<String, Long> counters = registry.getPredictionCounters();
         for (Map.Entry<String, Long> entry : counters.entrySet()) {
-            sb.append(String.format("doda_predictions_total{result=\"%s\"} %d\n",
-                    entry.getKey(), entry.getValue()));
+            sb.append(String.format("doda_predictions_total{version=\"%s\",result=\"%s\"} %d\n",
+                    version, entry.getKey(), entry.getValue()));
         }
         sb.append("\n");
     }
@@ -52,8 +59,9 @@ public class MetricsFormatter {
     private void formatInputTextLengthGauge(StringBuilder sb, MetricsRegistry registry) {
         sb.append("# HELP doda_input_text_length Length in characters of the most recent SMS input\n");
         sb.append("# TYPE doda_input_text_length gauge\n");
-        sb.append(String.format("doda_input_text_length %d\n",
-                registry.getInputTextLength()));
+        sb.append(String.format("doda_input_text_length{version=\"%s\"} %d\n",
+                version, registry.getInputTextLength()));
+
         sb.append("\n");
     }
 
@@ -70,19 +78,19 @@ public class MetricsFormatter {
         // Format buckets in order
         for (double boundary : boundaries) {
             Long count = buckets.get(boundary);
-            sb.append(String.format("doda_prediction_duration_seconds_bucket{le=\"%.2f\"} %d\n",
-                    boundary, count != null ? count : 0));
+            sb.append(String.format("doda_prediction_duration_seconds_bucket{version=\"%s\",le=\"%.2f\"} %d\n",
+                    version, boundary, count != null ? count : 0));
         }
 
         // Format +Inf bucket
         Long infCount = buckets.get(Double.POSITIVE_INFINITY);
-        sb.append(String.format("doda_prediction_duration_seconds_bucket{le=\"+Inf\"} %d\n",
-                infCount != null ? infCount : 0));
+        sb.append(String.format("doda_prediction_duration_seconds_bucket{version=\"%s\",le=\"+Inf\"} %d\n",
+                version, infCount != null ? infCount : 0));
 
         // Format sum and count
-        sb.append(String.format("doda_prediction_duration_seconds_sum %.6f\n",
-                registry.getDurationSum()));
-        sb.append(String.format("doda_prediction_duration_seconds_count %d\n",
-                registry.getDurationCount()));
+        sb.append(String.format("doda_prediction_duration_seconds_sum{version=\"%s\"} %.6f\n",
+                version, registry.getDurationSum()));
+        sb.append(String.format("doda_prediction_duration_seconds_count{version=\"%s\"} %d\n",
+                version, registry.getDurationCount()));
     }
 }
