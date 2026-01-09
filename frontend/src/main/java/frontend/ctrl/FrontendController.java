@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import frontend.data.Sms;
 import frontend.metrics.MetricsRegistry;
+import io.micrometer.core.instrument.Counter;
 import jakarta.servlet.http.HttpServletRequest;
 
 import org.doda25.team19.libversion.VersionUtil;
@@ -28,11 +29,16 @@ public class FrontendController {
     private RestTemplateBuilder rest;
 
     private final MetricsRegistry metricsRegistry;
+    private final Counter successCounter;
+    private final Counter errorCounter;
 
-    public FrontendController(RestTemplateBuilder rest, Environment env, MetricsRegistry metricsRegistry) {
+    public FrontendController(RestTemplateBuilder rest, Environment env, MetricsRegistry metricsRegistry,
+                            Counter successPredictionCounter, Counter errorPredictionCounter) {
         this.rest = rest;
         this.modelHost = env.getProperty("MODEL_HOST", "http://localhost:8081");
         this.metricsRegistry = metricsRegistry;
+        this.successCounter = successPredictionCounter;
+        this.errorCounter = errorPredictionCounter;
 
         System.out.println("Application starting with Lib-Version: " + new VersionUtil().getVersion());
 
@@ -86,6 +92,7 @@ public class FrontendController {
             // Track success
             try {
                 metricsRegistry.incrementPredictionCounter("success");
+                successCounter.increment();
             } catch (Exception metricsError) {
                 System.err.println("Failed to record success metric: " + metricsError.getMessage());
             }
@@ -95,6 +102,7 @@ public class FrontendController {
             // Track error
             try {
                 metricsRegistry.incrementPredictionCounter("error");
+                errorCounter.increment();
             } catch (Exception metricsError) {
                 System.err.println("Failed to record error metric: " + metricsError.getMessage());
             }
