@@ -5,11 +5,13 @@ WORKDIR /app
 
 # Copy pom.xml and download dependencies first to leverage Docker layer caching
 COPY frontend/pom.xml frontend/pom.xml
-RUN mvn -f frontend/pom.xml dependency:go-offline
+RUN --mount=type=secret,id=maven_settings,target=/root/.m2/settings.xml \
+    mvn -f frontend/pom.xml dependency:go-offline
 
 # Copy source code and build the application
 COPY frontend/src frontend/src
-RUN mvn -f frontend/pom.xml -q package -DskipTests
+RUN --mount=type=secret,id=maven_settings,target=/root/.m2/settings.xml \
+    mvn -f frontend/pom.xml -q package -DskipTests
 
 # --- Stage 2: Runtime ---
 FROM eclipse-temurin:25-jre
